@@ -39,6 +39,8 @@ Validated in `lib/env.ts`. **Production** requires `OPENAI_API_KEY` (enforced vi
 
 Rasterization uses **sharp** when your libvips build supports PDF. If sharp cannot read PDFs (common on some installs), the server falls back to Poppler’s **`pdftoppm`** — install Poppler so it is on `PATH` (macOS: `brew install poppler`).
 
+**Vercel:** Serverless does not ship Poppler or a PDF-capable libvips for this path. Scanned or image-only PDFs return a clear `422` asking for a text-based PDF or pasted text instead of a `brew` hint.
+
 ## Sessions
 
 Invention sessions are stored **in memory** (`lib/invention/session-store.ts`). That is fine for local demo and single-node deploys; **multiple serverless instances will not share sessions**. For production scale, implement a shared store (see `lib/invention/redis-session-store.stub.ts`).

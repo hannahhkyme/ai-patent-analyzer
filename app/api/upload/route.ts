@@ -8,6 +8,16 @@ export const runtime = "nodejs";
 const MIN_EXTRACTED_CHARS = 500;
 const MAX_PAGES_FOR_VISION = 3;
 
+function rasterizeFailureMessage(): string {
+  if (process.env.VERCEL === "1") {
+    return "This host can't process scanned PDFs; try a text-based PDF or paste text";
+  }
+  return (
+    "Could not rasterize PDF. Install Poppler so `pdftoppm` is on PATH (macOS: brew install poppler), " +
+    "or use a libvips build with PDF support."
+  );
+}
+
 export async function POST(request: Request) {
   let formData: FormData;
   try {
@@ -33,13 +43,11 @@ export async function POST(request: Request) {
     try {
       images = await renderPdfPagesToPngWithFallback(buffer, MAX_PAGES_FOR_VISION);
     } catch (fallbackErr) {
-      const hint =
-        "Install Poppler so `pdftoppm` is on PATH (macOS: brew install poppler), or use a libvips build with PDF support.";
       console.error("PDF rasterize:", fallbackErr);
-      return jsonError(422, `Could not rasterize PDF. ${hint}`);
+      return jsonError(422, rasterizeFailureMessage());
     }
     if (images.length === 0) {
-      return jsonError(422, "Could not rasterize PDF pages.");
+      return jsonError(422, rasterizeFailureMessage());
     }
 
     const visionText = (await ocrPatentPagesWithVision(images)).trim();
