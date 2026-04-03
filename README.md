@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Provisional Patent Filing Assistant
 
-## Getting Started
+Next.js App Router app that helps first-time inventors work through a provisional disclosure: guided follow-ups (OpenAI **gpt-4o** when configured), analysis with optional **USPTO** similar-patent hints, and a draft scaffold.
 
-First, run the development server:
+## Routes
+
+| Path   | Purpose                                      |
+|--------|----------------------------------------------|
+| `/`    | Landing + orientation tabs                   |
+| `/app` | AI filing assistant (chat-style flow)        |
+| `/docs`| API reference (data-driven from `lib/api-reference.ts`) |
+
+## Scripts
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev          # local dev
+npm run build
+npm run verify:api   # ensure api-reference matches app/api/**/route.ts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Use `npm run verify:api -- --linear` in CI with `LINEAR_API_KEY` and `LINEAR_TEAM_ID` to open a Linear issue when verification fails.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Validated in `lib/env.ts`. **Production** requires `OPENAI_API_KEY` (enforced via `instrumentation.ts`).
 
-## Learn More
+| Variable | Required | Notes |
+|----------|----------|--------|
+| `OPENAI_API_KEY` | Production | Enables AI follow-ups and draft |
+| `USPTO_API_KEY` | No | Live similar-patent search (`POST /api/v1/patent/applications/search`); without it, analysis returns a configuration hint |
+| `USPTO_API_BASE_URL` | No | Defaults to `https://api.uspto.gov` |
+| `LINEAR_API_KEY` | No | Doc-drift tickets (`verify:api --linear`) |
+| `LINEAR_TEAM_ID` | No | With Linear key |
+| `LINEAR_PROJECT_ID` | No | Optional |
 
-To learn more about Next.js, take a look at the following resources:
+## PDF upload (scanned / image PDFs)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`/api/upload` tries **text extraction** first (`pdf-parse`). If the PDF has little or no embedded text, it **rasterizes the first 3 pages** and sends PNGs to OpenAI vision for OCR (`OPENAI_API_KEY` required for that path).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Rasterization uses **sharp** when your libvips build supports PDF. If sharp cannot read PDFs (common on some installs), the server falls back to Poppler’s **`pdftoppm`** — install Poppler so it is on `PATH` (macOS: `brew install poppler`).
 
-## Deploy on Vercel
+## Sessions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Invention sessions are stored **in memory** (`lib/invention/session-store.ts`). That is fine for local demo and single-node deploys; **multiple serverless instances will not share sessions**. For production scale, implement a shared store (see `lib/invention/redis-session-store.stub.ts`).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## API catalog
+
+The HTTP contract is defined once in `lib/api-reference.ts` and rendered on `/docs`. Route handlers live under `app/api/`.
