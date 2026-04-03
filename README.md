@@ -1,6 +1,6 @@
 # Provisional Patent Filing Assistant
 
-Next.js App Router app that helps first-time inventors work through a provisional disclosure: guided follow-ups (OpenAI **gpt-4o** when configured), analysis with optional **USPTO** similar-patent hints, and a draft scaffold.
+Next.js App Router app that helps first-time inventors work through a provisional disclosure: guided follow-ups (OpenAI **gpt-4o** when configured), analysis with **USPTO** similar-patent hints (required in production), and a draft scaffold.
 
 ## Routes
 
@@ -22,12 +22,12 @@ Use `npm run verify:api -- --linear` in CI with `LINEAR_API_KEY` and `LINEAR_TEA
 
 ## Environment
 
-Validated in `lib/env.ts`. **Production** requires `OPENAI_API_KEY` (enforced via `instrumentation.ts`).
+Validated in `lib/env.ts`. **Production** enforces `OPENAI_API_KEY` and `USPTO_API_KEY` at startup (via `instrumentation.ts`).
 
 | Variable | Required | Notes |
 |----------|----------|--------|
-| `OPENAI_API_KEY` | Production | Enables AI follow-ups and draft |
-| `USPTO_API_KEY` | No | Live similar-patent search (`POST /api/v1/patent/applications/search`); without it, analysis returns a configuration hint |
+| `OPENAI_API_KEY` | Production | Enforced at startup. AI follow-ups, draft, PDF vision OCR. |
+| `USPTO_API_KEY` | Production | Enforced at startup. Live similar-patent search (`POST /api/v1/patent/applications/search`). |
 | `USPTO_API_BASE_URL` | No | Defaults to `https://api.uspto.gov` |
 | `LINEAR_API_KEY` | No | Doc-drift tickets (`verify:api --linear`) |
 | `LINEAR_TEAM_ID` | No | With Linear key |
