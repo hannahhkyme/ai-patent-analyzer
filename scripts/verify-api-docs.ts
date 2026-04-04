@@ -1,7 +1,6 @@
 /**
  * Verifies lib/api-reference.ts matches App Router route handlers.
  * Run: npx tsx scripts/verify-api-docs.ts
- * Optional: LINEAR_API_KEY + LINEAR_TEAM_ID to open a ticket on failure (--linear).
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -75,56 +74,14 @@ function verify(): string[] {
   return errors;
 }
 
-async function createLinearIssue(title: string, description: string): Promise<void> {
-  const key = process.env.LINEAR_API_KEY;
-  const teamId = process.env.LINEAR_TEAM_ID;
-  if (!key || !teamId) return;
-
-  const query = `
-    mutation CreateIssue($teamId: String!, $title: String!, $description: String!, $projectId: String) {
-      issueCreate(input: { teamId: $teamId, title: $title, description: $description, projectId: $projectId }) {
-        success
-        issue { id url }
-      }
-    }
-  `;
-  const projectId = process.env.LINEAR_PROJECT_ID;
-  const res = await fetch("https://api.linear.app/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: key,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        teamId,
-        title,
-        description,
-        projectId: projectId || null,
-      },
-    }),
-  });
-  if (!res.ok) {
-    console.error("Linear API HTTP error:", res.status, await res.text());
-  }
-}
-
-async function main() {
+function main() {
   const errors = verify();
   if (errors.length === 0) {
     console.log("API docs match route handlers.");
     process.exit(0);
   }
-  const body = errors.join("\n");
-  console.error("API doc / route drift:\n", body);
-  if (process.argv.includes("--linear")) {
-    await createLinearIssue(
-      "[CI] API reference drift vs App Router",
-      "```\n" + body + "\n```",
-    );
-  }
+  console.error("API doc / route drift:\n", errors.join("\n"));
   process.exit(1);
 }
 
-void main();
+main();

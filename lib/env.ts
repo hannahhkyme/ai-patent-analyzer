@@ -5,9 +5,6 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   USPTO_API_KEY: z.string().optional(),
   USPTO_API_BASE_URL: z.string().url().optional(),
-  LINEAR_API_KEY: z.string().optional(),
-  LINEAR_TEAM_ID: z.string().optional(),
-  LINEAR_PROJECT_ID: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof envSchema>;
