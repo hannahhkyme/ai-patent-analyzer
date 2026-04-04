@@ -10,6 +10,8 @@ export type StartInventionResult = {
   session_id: string;
   missing_fields: string[];
   first_question: string;
+  /** Character length of trimmed disclosure text (for client UX / limits). */
+  disclosure_length: number;
 };
 
 export type FollowupResult = {
