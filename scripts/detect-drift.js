@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * After filtering trivial diffs, always opens a Devin session to review and update API docs.
- * Intended for CI (e.g. GitHub Actions on push to main).
+ * Documentation drift heuristics on HEAD~1..HEAD; tiered actions:
+ *   HIGH  → Devin session (API / contract signals)
+ *   MEDIUM → Linear issue (lib/types/features signals)
+ *   LOW/NONE → log insight only
  *
  * Env:
- *   DEVIN_API_KEY, DEVIN_SESSIONS_URL — POST body { prompt } (full sessions URL)
- *   API_DOCS_PATH — path to the API docs catalog module (shown in Devin prompt)
- *   DOCS_PAGE_URL — full URL to the deployed docs UI (e.g. https://app.example.com/docs)
+ *   DEVIN_API_KEY, DEVIN_SESSIONS_URL — HIGH (POST { prompt }, full sessions URL)
+ *   LINEAR_API_KEY, LINEAR_TEAM_ID — MEDIUM (optional LINEAR_PROJECT_ID)
+ *   API_DOCS_PATH, DOCS_PAGE_URL — Devin prompt context
  *
- * Local runs: if `.env` exists in the current working directory, KEY=value lines are loaded
- * into process.env (only for keys not already set). Node does not load `.env` by default.
- * CI should inject env vars via the workflow.
+ * Local: loads `.env` from cwd when present (does not override existing process.env).
  */
 
 const { execSync } = require("node:child_process");
@@ -290,31 +290,94 @@ async function postDevinSession(prompt) {
   return true;
 }
 
-function buildRiskHeuristicSummary(files, diff) {
+/**
+ * @returns {{ high: boolean, medium: boolean, insight: string, tier: "HIGH" | "MEDIUM" | "LOW" }}
+ */
+function classifyDrift(files, diff) {
   const high = highRiskFromDiffAndFiles(files, diff);
   const medium = mediumRiskFromFiles(files, diff);
+  let insight;
   if (high && medium) {
-    return "Heuristic: strong API/route contract signals plus shared lib/types/features changes — prioritize route handlers and exported JSON shapes.";
+    insight =
+      "Strong API/route contract signals plus shared lib/types/features changes — prioritize route handlers and exported JSON shapes.";
+  } else if (high) {
+    insight =
+      "Likely API route or HTTP contract change — align docs with handlers and request/response fields.";
+  } else if (medium) {
+    insight =
+      "Shared lib, types, or new feature components — confirm whether public HTTP docs or /docs UI copy need updates.";
+  } else {
+    insight =
+      "No strong route/API heuristic match for this diff — documentation drift risk treated as low.";
   }
-  if (high) {
-    return "Heuristic: likely API route or HTTP contract change — align docs with handlers and request/response fields.";
-  }
-  if (medium) {
-    return "Heuristic: shared lib, types, or new feature components — confirm whether public HTTP docs or /docs UI copy need updates.";
-  }
-  return "Heuristic: no strong route/API signal — still verify the deployed docs match any user-visible or HTTP contract impact.";
+  const tier = high ? "HIGH" : medium ? "MEDIUM" : "LOW";
+  return { high, medium, insight, tier };
 }
 
-function buildDevinPrompt(files, diff, riskSummary) {
+async function createLinearIssue(title, description) {
+  const key = process.env.LINEAR_API_KEY?.trim();
+  const teamId = process.env.LINEAR_TEAM_ID?.trim();
+  if (!key || !teamId) {
+    logStep(
+      "MEDIUM action: LINEAR_API_KEY or LINEAR_TEAM_ID not set — skipping Linear POST. Add secrets or .env for CI/local.",
+    );
+    return "skipped";
+  }
+  const query = `
+    mutation CreateIssue($teamId: String!, $title: String!, $description: String!, $projectId: String) {
+      issueCreate(input: { teamId: $teamId, title: $title, description: $description, projectId: $projectId }) {
+        success
+        issue { id url }
+      }
+    }
+  `;
+  const projectId = process.env.LINEAR_PROJECT_ID?.trim();
+  const res = await fetch("https://api.linear.app/graphql", {
+    method: "POST",
+    headers: {
+      Authorization: key,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query,
+      variables: {
+        teamId,
+        title,
+        description,
+        projectId: projectId || null,
+      },
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    logError(`Linear API HTTP ${res.status}`, text.slice(0, 2000));
+    return false;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    logError("Linear response not JSON", text.slice(0, 2000));
+    return false;
+  }
+  if (parsed.errors?.length) {
+    logError("Linear GraphQL errors", JSON.stringify(parsed.errors, null, 2));
+    return false;
+  }
+  logStep(`Linear issue created. Raw: ${text.slice(0, 500)}`);
+  return true;
+}
+
+function buildDevinPrompt(files, diff, insight) {
   const docsUrl = process.env.DOCS_PAGE_URL?.trim() || "(set DOCS_PAGE_URL to your deployed /docs URL)";
   const apiDocsPath =
     process.env.API_DOCS_PATH?.trim() ||
     "(set API_DOCS_PATH to your API docs source file, e.g. the module that feeds /docs)";
 
-  return `You must review and update API documentation for this Next.js merge. This is mandatory for every run: do not skip verification.
+  return `You must review and update API documentation for this Next.js merge (HIGH-priority drift signal). Do not skip verification.
 
-Context:
-${riskSummary}
+Insight (automated):
+${insight}
 
 Changed files (paths only):
 ${files.map((f) => `- ${f}`).join("\n")}
@@ -333,7 +396,7 @@ Required tasks:
 
 Use the diff as the source of truth; do not invent endpoints or fields that are not implied by the repository.
 
-If everything already matches, still document that in the PR description and show the screenshot proves parity.`;
+If everything already matches, still document that in the PR description and use the screenshot to show parity.`;
 }
 
 async function main() {
@@ -375,13 +438,40 @@ async function main() {
     process.exit(0);
   }
 
-  const riskSummary = buildRiskHeuristicSummary(files, diff);
-  logStep(`Decision: Devin — docs review/update required for this merge. ${riskSummary}`);
+  const { high, medium, insight, tier } = classifyDrift(files, diff);
+  logStep(`Insight (${tier}): ${insight}`);
 
-  const prompt = buildDevinPrompt(files, diff, riskSummary);
-  const result = await postDevinSession(prompt);
-  if (result === "skipped") process.exit(0);
-  process.exit(result ? 0 : 1);
+  if (high) {
+    logStep("Action: HIGH — Devin session (docs review / update).");
+    const prompt = buildDevinPrompt(files, diff, insight);
+    const result = await postDevinSession(prompt);
+    if (result === "skipped") process.exit(0);
+    process.exit(result ? 0 : 1);
+  }
+
+  if (medium) {
+    logStep("Action: MEDIUM — Linear ticket (doc drift watchlist).");
+    const title = "[detect-drift] MEDIUM: possible documentation / contract drift";
+    const description = [
+      `**Tier:** MEDIUM`,
+      `**Insight:** ${insight}`,
+      "",
+      "**Changed files:**",
+      ...files.map((f) => `- \`${f}\``),
+      "",
+      "**Diff (truncated to 12000 chars):**",
+      "```diff",
+      diff.slice(0, 12000),
+      diff.length > 12000 ? "\n... (truncated)\n" : "",
+      "```",
+    ].join("\n");
+    const result = await createLinearIssue(title, description);
+    if (result === "skipped") process.exit(0);
+    process.exit(result ? 0 : 1);
+  }
+
+  logStep("Action: LOW/NONE — no Devin or Linear trigger for this diff.");
+  process.exit(0);
 }
 
 main().catch((e) => {
