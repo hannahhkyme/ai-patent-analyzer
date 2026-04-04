@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 /**
- * Documentation / API drift risk detector for Next.js-style repos.
+ * After filtering trivial diffs, always opens a Devin session to review and update API docs.
  * Intended for CI (e.g. GitHub Actions on push to main).
  *
- * Env (optional unless noted):
- *   DEVIN_API_KEY, DEVIN_SESSIONS_URL — HIGH tier Devin session POST (full sessions URL)
- *   LINEAR_API_KEY, LINEAR_TEAM_ID — MEDIUM tier Linear issue
- *   API_DOCS_PATH — path to the API docs source module (shown in Devin prompt)
- *   DOCS_PAGE_URL — full URL to the docs UI (e.g. https://app.example.com/docs)
+ * Env:
+ *   DEVIN_API_KEY, DEVIN_SESSIONS_URL — POST body { prompt } (full sessions URL)
+ *   API_DOCS_PATH — path to the API docs catalog module (shown in Devin prompt)
+ *   DOCS_PAGE_URL — full URL to the deployed docs UI (e.g. https://app.example.com/docs)
  */
 
 const { execSync } = require("node:child_process");
@@ -258,67 +257,31 @@ async function postDevinSession(prompt) {
   return true;
 }
 
-async function createLinearIssue(title, description) {
-  const key = process.env.LINEAR_API_KEY?.trim();
-  const teamId = process.env.LINEAR_TEAM_ID?.trim();
-  if (!key || !teamId) {
-    logStep(
-      "MEDIUM risk: LINEAR_API_KEY or LINEAR_TEAM_ID not set — skipping Linear POST (configure secrets to enable).",
-    );
-    return "skipped";
+function buildRiskHeuristicSummary(files, diff) {
+  const high = highRiskFromDiffAndFiles(files, diff);
+  const medium = mediumRiskFromFiles(files, diff);
+  if (high && medium) {
+    return "Heuristic: strong API/route contract signals plus shared lib/types/features changes — prioritize route handlers and exported JSON shapes.";
   }
-  const query = `
-    mutation CreateIssue($teamId: String!, $title: String!, $description: String!, $projectId: String) {
-      issueCreate(input: { teamId: $teamId, title: $title, description: $description, projectId: $projectId }) {
-        success
-        issue { id url }
-      }
-    }
-  `;
-  const projectId = process.env.LINEAR_PROJECT_ID?.trim();
-  const res = await fetch("https://api.linear.app/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: key,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        teamId,
-        title,
-        description,
-        projectId: projectId || null,
-      },
-    }),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    logError(`Linear API HTTP ${res.status}`, text.slice(0, 2000));
-    return false;
+  if (high) {
+    return "Heuristic: likely API route or HTTP contract change — align docs with handlers and request/response fields.";
   }
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (e) {
-    logError("Linear response not JSON", text.slice(0, 2000));
-    return false;
+  if (medium) {
+    return "Heuristic: shared lib, types, or new feature components — confirm whether public HTTP docs or /docs UI copy need updates.";
   }
-  if (parsed.errors?.length) {
-    logError("Linear GraphQL errors", JSON.stringify(parsed.errors, null, 2));
-    return false;
-  }
-  logStep(`Linear issue created. Raw: ${text.slice(0, 500)}`);
-  return true;
+  return "Heuristic: no strong route/API signal — still verify the deployed docs match any user-visible or HTTP contract impact.";
 }
 
-function buildDevinPrompt(files, diff) {
+function buildDevinPrompt(files, diff, riskSummary) {
   const docsUrl = process.env.DOCS_PAGE_URL?.trim() || "(set DOCS_PAGE_URL to your deployed /docs URL)";
   const apiDocsPath =
     process.env.API_DOCS_PATH?.trim() ||
     "(set API_DOCS_PATH to your API docs source file, e.g. the module that feeds /docs)";
 
-  return `You are helping fix documentation drift in a Next.js app.
+  return `You must review and update API documentation for this Next.js merge. This is mandatory for every run: do not skip verification.
+
+Context:
+${riskSummary}
 
 Changed files (paths only):
 ${files.map((f) => `- ${f}`).join("\n")}
@@ -328,13 +291,16 @@ Full git diff (HEAD~1 vs HEAD):
 ${diff}
 \`\`\`
 
-Tasks:
-1. Open ${docsUrl} in a browser and capture a screenshot of the current docs UI.
-2. Update the API documentation source at: ${apiDocsPath} so it matches the actual route handlers and response/request shapes implied by the diff.
-3. Open a pull request with the doc updates (and any minimal supporting changes).
-4. Create a Linear ticket summarizing what drift was found and what you changed.
+Required tasks:
+1. Open ${docsUrl} in a browser, confirm what the live /docs (or equivalent) UI shows, and capture a screenshot for the record.
+2. Compare that UI to the actual App Router (or Pages) API route implementations affected by the diff. Update the API documentation source file at ${apiDocsPath} so paths, HTTP methods, request fields, and response fields match the code.
+3. If the docs page component (e.g. the route that renders /docs) needs copy or layout changes for accuracy, update it as well.
+4. Open a pull request with all doc-related fixes and minimal supporting code changes only where required for accuracy.
+5. If your workflow uses issue tracking, create a ticket summarizing what was out of date and what you changed.
 
-Use the diff as the source of truth for what changed; do not assume undocumented behavior.`;
+Use the diff as the source of truth; do not invent endpoints or fields that are not implied by the repository.
+
+If everything already matches, still document that in the PR description and show the screenshot proves parity.`;
 }
 
 async function main() {
@@ -375,39 +341,13 @@ async function main() {
     process.exit(0);
   }
 
-  const high = highRiskFromDiffAndFiles(files, diff);
-  const medium = mediumRiskFromFiles(files, diff);
+  const riskSummary = buildRiskHeuristicSummary(files, diff);
+  logStep(`Decision: Devin — docs review/update required for this merge. ${riskSummary}`);
 
-  if (high) {
-    logStep("Decision: HIGH — API/docs-relevant drift risk; Devin session path.");
-    const prompt = buildDevinPrompt(files, diff);
-    const result = await postDevinSession(prompt);
-    if (result === "skipped") process.exit(0);
-    process.exit(result ? 0 : 1);
-  }
-
-  if (medium) {
-    logStep("Decision: MEDIUM — lib/types/features drift risk; Linear ticket path.");
-    const title = "[detect-drift] Possible documentation / contract drift (medium)";
-    const description = [
-      "Automated drift heuristics flagged this merge as medium risk.",
-      "",
-      "**Changed files:**",
-      ...files.map((f) => `- \`${f}\``),
-      "",
-      "**Diff (truncated to 12000 chars):**",
-      "```diff",
-      diff.slice(0, 12000),
-      diff.length > 12000 ? "\n... (truncated)\n" : "",
-      "```",
-    ].join("\n");
-    const result = await createLinearIssue(title, description);
-    if (result === "skipped") process.exit(0);
-    process.exit(result ? 0 : 1);
-  }
-
-  logStep("LOW/NONE: no high/medium heuristics matched — no drift risk.");
-  process.exit(0);
+  const prompt = buildDevinPrompt(files, diff, riskSummary);
+  const result = await postDevinSession(prompt);
+  if (result === "skipped") process.exit(0);
+  process.exit(result ? 0 : 1);
 }
 
 main().catch((e) => {
