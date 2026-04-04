@@ -7,9 +7,15 @@
  *   DEVIN_API_KEY, DEVIN_SESSIONS_URL — POST body { prompt } (full sessions URL)
  *   API_DOCS_PATH — path to the API docs catalog module (shown in Devin prompt)
  *   DOCS_PAGE_URL — full URL to the deployed docs UI (e.g. https://app.example.com/docs)
+ *
+ * Local runs: if `.env` exists in the current working directory, KEY=value lines are loaded
+ * into process.env (only for keys not already set). Node does not load `.env` by default.
+ * CI should inject env vars via the workflow.
  */
 
 const { execSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
 const process = require("node:process");
 
 const MAX_BUFFER = 50 * 1024 * 1024;
@@ -21,6 +27,33 @@ function logStep(msg) {
 function logError(msg, err) {
   console.error(`[detect-drift] ERROR: ${msg}`);
   if (err != null) console.error(err);
+}
+
+/** Minimal .env loader (no dependency); does not override existing process.env. */
+function loadDotEnvFromCwd() {
+  try {
+    const dotenvPath = path.join(process.cwd(), ".env");
+    if (!fs.existsSync(dotenvPath)) return;
+    const text = fs.readFileSync(dotenvPath, "utf8");
+    for (const line of text.split(/\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith("#")) continue;
+      const eq = t.indexOf("=");
+      if (eq < 1) continue;
+      const key = t.slice(0, eq).trim();
+      if (!key || process.env[key] !== undefined) continue;
+      let val = t.slice(eq + 1).trim();
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1);
+      }
+      process.env[key] = val;
+    }
+  } catch (e) {
+    logError("Could not read .env (optional)", e);
+  }
 }
 
 function execGit(args, label) {
@@ -234,7 +267,7 @@ async function postDevinSession(prompt) {
   const url = process.env.DEVIN_SESSIONS_URL?.trim();
   if (!key || !url) {
     logStep(
-      "HIGH risk: DEVIN_API_KEY or DEVIN_SESSIONS_URL not set — skipping Devin POST (configure secrets to enable).",
+      "DEVIN_API_KEY or DEVIN_SESSIONS_URL not set — skipping Devin POST. For local runs ensure .env is in the repo root (script loads it) or export both vars. In CI, add repository secrets.",
     );
     return "skipped";
   }
@@ -304,6 +337,7 @@ If everything already matches, still document that in the PR description and sho
 }
 
 async function main() {
+  loadDotEnvFromCwd();
   logStep("Starting drift risk analysis (HEAD~1..HEAD)");
 
   if (!hasParentCommit()) {
