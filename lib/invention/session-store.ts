@@ -3,9 +3,9 @@ import type { InventionSession } from "./types";
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 export type InventionSessionStore = {
-  createSession(title: string, description: string): InventionSession;
-  getSession(id: string): InventionSession | undefined;
-  appendAnswer(id: string, answer: string): InventionSession | null;
+  createSession(title: string, description: string): Promise<InventionSession>;
+  getSession(id: string): Promise<InventionSession | undefined>;
+  appendAnswer(id: string, answer: string): Promise<InventionSession | null>;
 };
 
 export function createMemoryInventionSessionStore(): InventionSessionStore {
@@ -19,7 +19,7 @@ export function createMemoryInventionSessionStore(): InventionSessionStore {
   }
 
   return {
-    createSession(title: string, description: string): InventionSession {
+    async createSession(title: string, description: string): Promise<InventionSession> {
       purgeExpired();
       const id = crypto.randomUUID();
       const session: InventionSession = {
@@ -32,7 +32,8 @@ export function createMemoryInventionSessionStore(): InventionSessionStore {
       sessions.set(id, session);
       return session;
     },
-    getSession(id: string): InventionSession | undefined {
+
+    async getSession(id: string): Promise<InventionSession | undefined> {
       const session = sessions.get(id);
       if (!session) return undefined;
       if (Date.now() - session.createdAt > SESSION_TTL_MS) {
@@ -41,8 +42,9 @@ export function createMemoryInventionSessionStore(): InventionSessionStore {
       }
       return session;
     },
-    appendAnswer(id: string, answer: string): InventionSession | null {
-      const session = this.getSession(id);
+
+    async appendAnswer(id: string, answer: string): Promise<InventionSession | null> {
+      const session = await this.getSession(id);
       if (!session) return null;
       session.answers.push(answer);
       return session;

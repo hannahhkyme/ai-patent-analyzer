@@ -24,10 +24,9 @@ export async function processFollowup(
   answer: string,
 ): Promise<FollowupResult | null> {
   const store = getInventionSessionStore();
-  const session = store.getSession(sessionId);
+  const session = await store.appendAnswer(sessionId, answer);
   if (!session) return null;
 
-  store.appendAnswer(sessionId, answer);
   const answerCount = session.answers.length;
   const completeness_score = computeFollowupCompleteness(answerCount);
 

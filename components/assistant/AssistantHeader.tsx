@@ -13,7 +13,7 @@ export function AssistantHeader() {
           Filing assistant
         </h1>
         <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
-          Answer questions, then run analysis and a provisional draft scaffold.
+          Answer questions, then run analysis and generate a provisional patent application draft.
         </p>
       </div>
       <Link href="/docs" className="text-sm text-[var(--gold)] underline-offset-2 hover:underline">

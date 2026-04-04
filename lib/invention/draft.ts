@@ -26,7 +26,7 @@ function stubDraft(session: {
 
 export async function draftProvisional(sessionId: string): Promise<DraftResult | null> {
   const store = getInventionSessionStore();
-  const session = store.getSession(sessionId);
+  const session = await store.getSession(sessionId);
   if (!session) return null;
 
   const client = getOpenAIClient();

@@ -8,6 +8,6 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return jsonError(400, "title and description are required");
   }
-  const result = startInvention(parsed.data.title, parsed.data.description);
+  const result = await startInvention(parsed.data.title, parsed.data.description);
   return jsonOk(result);
 }

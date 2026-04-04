@@ -2,9 +2,9 @@ import { computeStatusCompleteness } from "./completeness";
 import { getInventionSessionStore } from "./session-store";
 import type { StatusResult } from "./types";
 
-export function getInventionStatus(sessionId: string): StatusResult | null {
+export async function getInventionStatus(sessionId: string): Promise<StatusResult | null> {
   const store = getInventionSessionStore();
-  const session = store.getSession(sessionId);
+  const session = await store.getSession(sessionId);
   if (!session) return null;
 
   const completeness_score = computeStatusCompleteness(

@@ -7,7 +7,7 @@ export async function GET(_request: Request, context: RouteCtx) {
   const { session_id: sessionId } = await context.params;
   const id = sessionId?.trim() ?? "";
   if (!id) return jsonError(400, "session_id is required");
-  const result = getInventionStatus(id);
+  const result = await getInventionStatus(id);
   if (!result) return jsonError(404, "session not found");
   return jsonOk(result);
 }

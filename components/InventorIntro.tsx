@@ -11,13 +11,9 @@ export default function InventorIntro() {
       </h2>
       <div className="mt-2 space-y-1.5 rounded-md border border-[var(--border)]/70 bg-[rgba(255,255,255,0.095)] p-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
         <p className="text-[13px] text-[var(--muted)]">
-          The earlier you file, the earlier you establish your place in line vs others patenting the
-          same idea. After a patent issues, that ties into when you can assert your rights against
-          infringers. Rules depend on your facts and claims.
-        </p>
-        <p className="text-[13px] text-[var(--muted)]">
-          A provisional can lock an early date; a non-provisional builds on it if the first filing
-          was complete enough. This tool helps you catch gaps <em>before</em> you file.
+          Before you spend thousands on a patent attorney, find out if your idea is actually
+          patentable. We search existing patents, spot what could block yours, and ask the right
+          questions to strengthen your application — free, in plain English, no lawyer needed.
         </p>
       </div>
       <LegalDisclaimer />

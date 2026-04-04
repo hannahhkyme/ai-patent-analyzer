@@ -6,8 +6,8 @@ Next.js App Router app that helps first-time inventors work through a provisiona
 
 | Path   | Purpose                                      |
 |--------|----------------------------------------------|
-| `/`    | Landing + orientation tabs                   |
-| `/app` | AI filing assistant (chat-style flow)        |
+| `/`    | Landing (hero, how it works, inventor intro) |
+| `/app` | Filing assistant (chat-style flow)           |
 | `/docs`| API reference (data-driven from `lib/api-reference.ts`) |
 
 ## Scripts
@@ -29,6 +29,7 @@ Validated in `lib/env.ts`. **Production** enforces `OPENAI_API_KEY` and `USPTO_A
 | `OPENAI_API_KEY` | Production | Enforced at startup. AI follow-ups, draft, PDF vision OCR. |
 | `USPTO_API_KEY` | Production | Enforced at startup. Live similar-patent search (`POST /api/v1/patent/applications/search`). |
 | `USPTO_API_BASE_URL` | No | Defaults to `https://api.uspto.gov` |
+| `REDIS_URL` | No | If set, sessions use Redis (`lib/invention/session-store.ts`); otherwise in-memory |
 | `LINEAR_API_KEY` | No | Doc-drift tickets (`verify:api --linear`) |
 | `LINEAR_TEAM_ID` | No | With Linear key |
 | `LINEAR_PROJECT_ID` | No | Optional |

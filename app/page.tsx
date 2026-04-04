@@ -1,6 +1,5 @@
 import Link from "next/link";
 import InventorIntro from "@/components/InventorIntro";
-import LandingTabs from "@/components/LandingTabs";
 
 export default function HomePage() {
   return (
@@ -37,9 +36,9 @@ export default function HomePage() {
           <span className="text-[var(--text)]">before someone else does</span>
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-snug text-[var(--muted)]">
-          You have something worth protecting — and the clock is always ticking. This workspace
-          helps you stress-test your disclosure, spot gaps, and move toward a stronger application
-          with less guesswork.
+          Not sure if your idea qualifies as an invention? You&apos;re not alone. This workspace
+          helps you find out — by searching what&apos;s already been patented, spotting what makes
+          yours unique, and identifying gaps before they cost you your filing date.
         </p>
         <div className="mt-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -71,10 +70,6 @@ export default function HomePage() {
           Start protecting my idea
           <span aria-hidden>→</span>
         </Link>
-      </div>
-
-      <div className="scroll-mt-6">
-        <LandingTabs />
       </div>
     </main>
   );

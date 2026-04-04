@@ -2,12 +2,12 @@ import { DEFAULT_MISSING_AFTER_START } from "./constants";
 import { getInventionSessionStore } from "./session-store";
 import type { StartInventionResult } from "./types";
 
-export function startInvention(
+export async function startInvention(
   title: string,
   description: string,
-): StartInventionResult {
+): Promise<StartInventionResult> {
   const store = getInventionSessionStore();
-  const session = store.createSession(title, description);
+  const session = await store.createSession(title, description);
   const hasLongDescription = description.trim().length >= 400;
   return {
     session_id: session.id,
