@@ -16,5 +16,6 @@ export async function startInvention(
       hasLongDescription
         ? "I’ve loaded your disclosure text. What’s the single most important novel mechanism or step that you believe is new (vs. what exists today)?"
         : "In one or two sentences, what problem does your invention solve, and who feels that pain today?",
+    disclosure_length: description.trim().length,
   };
 }
