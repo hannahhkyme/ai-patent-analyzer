@@ -2,8 +2,7 @@ name: Weekly API doc health
 
 on:
   schedule:
-    # TEMP: every 5 minutes UTC (for testing). Revert to: 0 9 * * 1  (Mon 09:00 UTC)
-    - cron: "*/5 * * * *"
+    - cron: "0 9 * * 1" # Mon 09:00 UTC
   workflow_dispatch:
 
 jobs:
