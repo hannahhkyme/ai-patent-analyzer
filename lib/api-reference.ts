@@ -7,6 +7,8 @@ export type ApiEndpointSpec = {
   readonly summary: string;
   readonly requestFields: readonly string[];
   readonly responseFields: readonly string[];
+  /** Optional notes about error responses or other important behaviour. */
+  readonly notes?: readonly string[];
 };
 
 export const API_ENDPOINTS: readonly ApiEndpointSpec[] = [
@@ -60,8 +62,14 @@ export const API_ENDPOINTS: readonly ApiEndpointSpec[] = [
   {
     method: "POST",
     path: "/api/upload",
-    summary: "Upload a PDF; returns extracted plain text for disclosure intake.",
+    summary:
+      "Upload a PDF; returns extracted plain text for disclosure intake. Returns 422 for corrupted, encrypted, or otherwise unreadable PDFs.",
     requestFields: ["multipart file field"],
     responseFields: ["text"],
+    notes: [
+      "422 — unreadable PDF (corrupted, encrypted, or non-standard)",
+      "422 — rasterization not available (scanned PDF on a host without Poppler)",
+      "503 — OPENAI_API_KEY not configured",
+    ],
   },
 ] as const;
