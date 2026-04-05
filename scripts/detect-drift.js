@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
  * Documentation drift heuristics on HEAD~1..HEAD; tiered actions:
- *   HIGH  → Devin session (API / contract signals)
- *   MEDIUM → Linear issue (lib/types/features signals)
- *   LOW/NONE → log insight only
+ *   HIGH   → POST Devin session (API / contract heuristics)
+ *   MEDIUM → log + exit 0 (lib/types/features — review manually; no external API)
+ *   LOW    → log + exit 0
+ *
+ * Early exits (no classification): no parent commit, empty diff, only tests, only
+ * styles, or comment/whitespace-only diff.
  *
  * Env:
- *   DEVIN_API_KEY, DEVIN_SESSIONS_URL — HIGH (POST { prompt }, full sessions URL)
- *   LINEAR_API_KEY, LINEAR_TEAM_ID — MEDIUM (optional LINEAR_PROJECT_ID)
+ *   DEVIN_API_KEY, DEVIN_SESSIONS_URL — required for Devin POST on HIGH
  *   API_DOCS_PATH, DOCS_PAGE_URL — Devin prompt context
  *
  * Local: loads `.env` from cwd when present (does not override existing process.env).
@@ -314,59 +316,6 @@ function classifyDrift(files, diff) {
   return { high, medium, insight, tier };
 }
 
-async function createLinearIssue(title, description) {
-  const key = process.env.LINEAR_API_KEY?.trim();
-  const teamId = process.env.LINEAR_TEAM_ID?.trim();
-  if (!key || !teamId) {
-    logStep(
-      "MEDIUM action: LINEAR_API_KEY or LINEAR_TEAM_ID not set — skipping Linear POST. Add secrets or .env for CI/local.",
-    );
-    return "skipped";
-  }
-  const query = `
-    mutation CreateIssue($teamId: String!, $title: String!, $description: String!, $projectId: String) {
-      issueCreate(input: { teamId: $teamId, title: $title, description: $description, projectId: $projectId }) {
-        success
-        issue { id url }
-      }
-    }
-  `;
-  const projectId = process.env.LINEAR_PROJECT_ID?.trim();
-  const res = await fetch("https://api.linear.app/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: key,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        teamId,
-        title,
-        description,
-        projectId: projectId || null,
-      },
-    }),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    logError(`Linear API HTTP ${res.status}`, text.slice(0, 2000));
-    return false;
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (e) {
-    logError("Linear response not JSON", text.slice(0, 2000));
-    return false;
-  }
-  if (parsed.errors?.length) {
-    logError("Linear GraphQL errors", JSON.stringify(parsed.errors, null, 2));
-    return false;
-  }
-  logStep(`Linear issue created. Raw: ${text.slice(0, 500)}`);
-  return true;
-}
 
 function buildDevinPrompt(files, diff, insight) {
   const docsUrl = process.env.DOCS_PAGE_URL?.trim() || "(set DOCS_PAGE_URL to your deployed /docs URL)";
@@ -450,27 +399,11 @@ async function main() {
   }
 
   if (medium) {
-    logStep("Action: MEDIUM — Linear ticket (doc drift watchlist).");
-    const title = "[detect-drift] MEDIUM: possible documentation / contract drift";
-    const description = [
-      `**Tier:** MEDIUM`,
-      `**Insight:** ${insight}`,
-      "",
-      "**Changed files:**",
-      ...files.map((f) => `- \`${f}\``),
-      "",
-      "**Diff (truncated to 12000 chars):**",
-      "```diff",
-      diff.slice(0, 12000),
-      diff.length > 12000 ? "\n... (truncated)\n" : "",
-      "```",
-    ].join("\n");
-    const result = await createLinearIssue(title, description);
-    if (result === "skipped") process.exit(0);
-    process.exit(result ? 0 : 1);
+    logStep("Action: MEDIUM — possible doc drift, review manually.");
+    process.exit(0);
   }
 
-  logStep("Action: LOW/NONE — no Devin or Linear trigger for this diff.");
+  logStep("Action: LOW/NONE — no Devin trigger for this diff.");
   process.exit(0);
 }
 
