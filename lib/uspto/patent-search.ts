@@ -27,13 +27,44 @@ function pickFromWrapper(item: UnknownRecord): SimilarPatentRef {
   return { title, id };
 }
 
-async function readErrorSnippet(res: Response): Promise<string> {
-  try {
-    const text = await res.text();
-    if (!text) return "";
-    return text.slice(0, 280);
-  } catch {
-    return "";
+/** ODP search index uses nested fields; bare `inventionTitle:` matches nothing. */
+function normalizeUsptoQ(raw: string): string {
+  return raw.replace(/\binventionTitle:/g, "applicationMetaData.inventionTitle:");
+}
+
+/** User-facing row for non-empty-result failures (details logged separately). */
+function friendlyUsptoHttpFailure(status: number): SimilarPatentRef {
+  switch (status) {
+    case 401:
+    case 403:
+      return {
+        title: "Similar patent search unavailable",
+        snippet:
+          "The USPTO API did not authorize this request. Check that USPTO_API_KEY is valid and has access to the Open Data Portal.",
+      };
+    case 429:
+      return {
+        title: "Similar patent search rate limited",
+        snippet: "The USPTO service is limiting requests. Wait a few minutes and run analysis again.",
+      };
+    case 502:
+    case 503:
+    case 504:
+      return {
+        title: "USPTO service unavailable",
+        snippet: "The USPTO data service returned an error or timed out. Try again in a little while.",
+      };
+    case 400:
+      return {
+        title: "Similar patent search could not run",
+        snippet: "The search request was not accepted. If this keeps happening, try again with a shorter disclosure or title.",
+      };
+    default:
+      return {
+        title: "Similar patent search unavailable",
+        snippet:
+          "We couldn’t retrieve similar applications from the USPTO right now. The rest of your analysis still applies—try again later.",
+      };
   }
 }
 
@@ -47,15 +78,15 @@ export async function searchSimilarPatents(keywords: string): Promise<SimilarPat
   if (!key) {
     return [
       {
-        title: "Configure USPTO_API_KEY",
+        title: "Similar patent search not configured",
         snippet:
-          "Set USPTO_API_KEY (and optionally USPTO_API_BASE_URL) to enable live similar-patent search.",
+          "Add USPTO_API_KEY on the server to search for similar published applications. Other analysis still works without it.",
       },
     ];
   }
 
   const base = (env.USPTO_API_BASE_URL ?? USPTO_DEFAULT_BASE_URL).replace(/\/$/, "");
-  const q = keywords.trim().slice(0, USPTO_QUERY_MAX_CHARS);
+  const q = normalizeUsptoQ(keywords.trim()).slice(0, USPTO_QUERY_MAX_CHARS);
   const url = `${base}${USPTO_PATENT_SEARCH_PATH}`;
 
   try {
@@ -76,13 +107,16 @@ export async function searchSimilarPatents(keywords: string): Promise<SimilarPat
     });
 
     if (!res.ok) {
-      const extra = await readErrorSnippet(res);
-      return [
-        {
-          title: "USPTO search request failed",
-          snippet: `HTTP ${res.status}. ${extra || "Check API key and USPTO_API_BASE_URL."}`,
-        },
-      ];
+      const text = await res.text();
+      if (res.status === 404 && /no matching records/i.test(text)) {
+        return [{ title: "No similar applications returned", snippet: "Try different keywords." }];
+      }
+      console.warn(
+        "USPTO search HTTP error",
+        res.status,
+        text ? text.slice(0, 500) : "(empty body)",
+      );
+      return [friendlyUsptoHttpFailure(res.status)];
     }
 
     const data: unknown = await res.json();
@@ -103,6 +137,12 @@ export async function searchSimilarPatents(keywords: string): Promise<SimilarPat
     return out;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown error";
-    return [{ title: "USPTO search error", snippet: msg }];
+    console.error("USPTO search request failed:", msg);
+    return [
+      {
+        title: "Similar patent search unavailable",
+        snippet: "We couldn’t reach the USPTO service. Check your network connection and try again.",
+      },
+    ];
   }
 }

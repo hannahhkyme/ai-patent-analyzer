@@ -17,9 +17,6 @@ export async function getInventionStatus(sessionId: string): Promise<StatusResul
     session.lastAnalysis?.missing_sections ?? [
       ...(session.description.length < 120 ? ["specification_detail"] : []),
       ...(session.answers.length < 2 ? ["novelty_and_differences"] : []),
-      "formal_claims",
-      "abstract",
-      "oath_declaration",
     ];
 
   // sections_complete reflects what the user has actually submitted.

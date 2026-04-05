@@ -30,10 +30,12 @@ function AnalysisBubble({ data }: { data: AnalyzeResult }) {
           </p>
           <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-[var(--muted)]">
             {data.similar_patents.map((p) => (
-              <li key={p.id ?? p.title}>
-                {p.title}
-                {p.id ? ` — ${p.id}` : ""}
-                {p.snippet ? `: ${p.snippet}` : ""}
+              <li key={p.id ?? p.title} className={p.snippet ? "space-y-0.5" : undefined}>
+                <span>
+                  {p.title}
+                  {p.id ? ` — ${p.id}` : ""}
+                </span>
+                {p.snippet ? <span className="block leading-snug text-[var(--cream)]/90">{p.snippet}</span> : null}
               </li>
             ))}
           </ul>

@@ -16,8 +16,6 @@ export type StartInventionResult = {
   session_id: string;
   missing_fields: string[];
   first_question: string;
-  /** Trimmed disclosure character count (client may use for UX). */
-  disclosure_length: number;
 };
 
 export type FollowupResult = {

@@ -25,7 +25,7 @@ Dimensions:
 Output schema (JSON only, no markdown):
 {
   "completeness_score": <number 0.0–1.0 reflecting how ready this disclosure is for a provisional filing>,
-  "missing_sections": <string[] of missing or weak section identifiers, e.g. "claims", "detailed_description", "drawings", "background", "best_mode", "working_examples", "public_disclosure_date">,
+  "missing_sections": <string[] of missing or weak section identifiers, e.g. "detailed_description", "drawings", "background", "best_mode", "working_examples", "public_disclosure_date">,
   "risk_assessment": <string, 2–4 sentences specific to THIS invention — address any novelty concerns, obviousness risks, or enablement gaps you see in the actual content>,
   "recommendations": <string[], 3–5 concrete, actionable items tailored to what is actually missing from this specific disclosure>
 }
