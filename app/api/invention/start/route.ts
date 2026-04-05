@@ -2,8 +2,6 @@ import { jsonError, jsonOk, parseJsonBody } from "@/lib/http/json-route";
 import { startInvention } from "@/lib/invention/start";
 import { startBodySchema } from "@/lib/invention/schemas";
 
-export const dynamic = "force-dynamic";
-
 export async function POST(request: Request) {
   const raw = await parseJsonBody(request);
   const parsed = startBodySchema.safeParse(raw);

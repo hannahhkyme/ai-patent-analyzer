@@ -1,4 +1,4 @@
-import type { InventionSession } from "./types";
+import type { InventionSession, SessionAnalysis } from "./types";
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -6,6 +6,7 @@ export type InventionSessionStore = {
   createSession(title: string, description: string): Promise<InventionSession>;
   getSession(id: string): Promise<InventionSession | undefined>;
   appendAnswer(id: string, answer: string): Promise<InventionSession | null>;
+  saveAnalysis(id: string, analysis: SessionAnalysis): Promise<void>;
 };
 
 export function createMemoryInventionSessionStore(): InventionSessionStore {
@@ -48,6 +49,12 @@ export function createMemoryInventionSessionStore(): InventionSessionStore {
       if (!session) return null;
       session.answers.push(answer);
       return session;
+    },
+
+    async saveAnalysis(id: string, analysis: SessionAnalysis): Promise<void> {
+      const session = await this.getSession(id);
+      if (!session) return;
+      session.lastAnalysis = analysis;
     },
   };
 }

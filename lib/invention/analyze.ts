@@ -45,6 +45,8 @@ export async function analyzeInvention(sessionId: string): Promise<AnalyzeResult
       "Document any public use or offer for sale dates.",
     ];
 
+  await store.saveAnalysis(sessionId, { completeness_score, missing_sections });
+
   return {
     completeness_score,
     missing_sections,

@@ -1,17 +1,21 @@
+export type SessionAnalysis = {
+  completeness_score: number;
+  missing_sections: string[];
+};
+
 export type InventionSession = {
   id: string;
   title: string;
   description: string;
   answers: string[];
   createdAt: number;
+  lastAnalysis?: SessionAnalysis;
 };
 
 export type StartInventionResult = {
   session_id: string;
   missing_fields: string[];
   first_question: string;
-  /** Character length of trimmed disclosure text (for client UX / limits). */
-  disclosure_length: number;
 };
 
 export type FollowupResult = {
