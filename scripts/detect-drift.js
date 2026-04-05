@@ -337,15 +337,16 @@ ${diff}
 \`\`\`
 
 Required tasks:
-1. Open ${docsUrl} in a browser, confirm what the live /docs (or equivalent) UI shows, and capture a screenshot for the record.
+1. Open ${docsUrl} in a browser, confirm what the live /docs (or equivalent) UI shows right now, and capture a screenshot as the baseline (production reflects pre-PR state until merge/deploy).
 2. Compare that UI to the actual App Router (or Pages) API route implementations affected by the diff. Update the API documentation source file at ${apiDocsPath} so paths, HTTP methods, request fields, and response fields match the code.
 3. If the docs page component (e.g. the route that renders /docs) needs copy or layout changes for accuracy, update it as well.
-4. Open a pull request with all doc-related fixes and minimal supporting code changes only where required for accuracy.
-5. If your workflow uses issue tracking, create a ticket summarizing what was out of date and what you changed.
+4. After your edits, run the app locally (e.g. npm install if needed, then npm run dev) or use a preview deployment URL if you have one, open /docs on that environment, and capture a second screenshot showing the updated docs UI. Attach or reference both screenshots in the PR.
+5. Open a pull request with all doc-related fixes and minimal supporting code changes only where required for accuracy.
+6. If your workflow uses issue tracking, create a ticket summarizing what was out of date and what you changed.
 
 Use the diff as the source of truth; do not invent endpoints or fields that are not implied by the repository.
 
-If everything already matches, still document that in the PR description and use the screenshot to show parity.`;
+If everything already matches, still document that in the PR description; include the baseline screenshot and note that local /docs matches without code changes (or attach a local /docs screenshot if you verified that way).`;
 }
 
 async function main() {
