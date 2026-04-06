@@ -62,6 +62,18 @@ export default function DocsPage() {
                   </ul>
                 </div>
               </div>
+              {ep.notes && ep.notes.length > 0 && (
+                <div className="mt-4 border-t border-[var(--border)] pt-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    Error responses
+                  </p>
+                  <ul className="mt-1 list-inside list-disc text-sm text-[var(--cream)]/80">
+                    {ep.notes.map((n) => (
+                      <li key={n}>{n}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </li>
           ))}
         </ul>
