@@ -13,7 +13,13 @@ import {
   STATUS_DESCRIPTION_BONUS,
   STATUS_DESCRIPTION_THRESHOLD,
 } from "./constants";
+import type { DisclosureConfidence } from "./types";
 
+export function confidenceFromCompletenessScore(score: number): DisclosureConfidence {
+  if (score >= 0.85) return "high";
+  if (score >= 0.5) return "medium";
+  return "low";
+}
 export function computeFollowupCompleteness(answerCount: number): number {
   return Math.min(COMPLETENESS_CAP, COMPLETENESS_BASE + answerCount * COMPLETENESS_PER_ANSWER);
 }

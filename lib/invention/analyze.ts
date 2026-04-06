@@ -1,4 +1,4 @@
-import { computeAnalyzeCompleteness } from "./completeness";
+import { computeAnalyzeCompleteness, confidenceFromCompletenessScore } from "./completeness";
 import { runPatentSimilaritySearch } from "./uspto-similarity";
 import { getInventionSessionStore } from "./session-store";
 import { getOpenAIClient } from "../openai/client";
@@ -47,8 +47,11 @@ export async function analyzeInvention(sessionId: string): Promise<AnalyzeResult
 
   await store.saveAnalysis(sessionId, { completeness_score, missing_sections });
 
+  const confidence = confidenceFromCompletenessScore(completeness_score);
+
   return {
     completeness_score,
+    confidence,
     missing_sections,
     risk_assessment,
     recommendations,

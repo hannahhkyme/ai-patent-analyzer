@@ -7,7 +7,11 @@ function AnalysisBubble({ data }: { data: AnalyzeResult }) {
   return (
     <div className="space-y-2 text-sm">
       <p className="font-semibold text-[var(--gold)]">
-        Analysis — {(data.completeness_score * 100).toFixed(0)}% complete
+        Analysis — {(data.completeness_score * 100).toFixed(0)}% complete · Confidence:{" "}
+        <span className="capitalize">{data.confidence}</span>
+      </p>
+      <p className="text-xs text-[var(--muted)]">
+        Confidence reflects disclosure completeness for this automated pass—not legal certainty.
       </p>
       <p className="leading-snug">{data.risk_assessment}</p>
       {data.uspto_search_query ? (

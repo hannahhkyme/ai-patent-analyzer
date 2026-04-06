@@ -18,7 +18,6 @@
 const { execSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
-const process = require("node:process");
 
 const MAX_BUFFER = 50 * 1024 * 1024;
 

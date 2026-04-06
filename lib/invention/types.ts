@@ -1,3 +1,5 @@
+export type DisclosureConfidence = "low" | "medium" | "high";
+
 export type SessionAnalysis = {
   completeness_score: number;
   missing_sections: string[];
@@ -32,6 +34,7 @@ export type SimilarPatentRef = {
 
 export type AnalyzeResult = {
   completeness_score: number;
+  confidence: DisclosureConfidence;
   missing_sections: string[];
   risk_assessment: string;
   recommendations: string[];
@@ -48,6 +51,7 @@ export type DraftResult = {
 
 export type StatusResult = {
   completeness_score: number;
+  confidence: DisclosureConfidence;
   sections_complete: string[];
   sections_missing: string[];
   ready_to_file: boolean;

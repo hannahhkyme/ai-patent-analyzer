@@ -1,4 +1,4 @@
-import { computeStatusCompleteness } from "./completeness";
+import { computeStatusCompleteness, confidenceFromCompletenessScore } from "./completeness";
 import { getInventionSessionStore } from "./session-store";
 import type { StatusResult } from "./types";
 
@@ -26,9 +26,11 @@ export async function getInventionStatus(sessionId: string): Promise<StatusResul
   if (session.answers.length >= 3) sections_complete.push("disclosure_timeline");
 
   const ready_to_file = completeness_score >= 0.85 && session.answers.length >= 3;
+  const confidence = confidenceFromCompletenessScore(completeness_score);
 
   return {
     completeness_score,
+    confidence,
     sections_complete,
     sections_missing,
     ready_to_file,
