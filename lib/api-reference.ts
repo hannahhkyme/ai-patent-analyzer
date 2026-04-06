@@ -15,7 +15,7 @@ export const API_ENDPOINTS: readonly ApiEndpointSpec[] = [
     path: "/api/invention/start",
     summary: "Begin a filing session with title and description.",
     requestFields: ["title", "description"],
-    responseFields: ["session_id", "missing_fields", "first_question"],
+    responseFields: ["session_id", "missing_fields", "first_question", "disclosure_length"],
   },
   {
     method: "POST",
