@@ -1,6 +1,7 @@
 import { jsonError, jsonOk, parseJsonBody } from "@/lib/http/json-route";
-import { sessionIdBodySchema } from "@/lib/invention/schemas";
 import { analyzeInvention } from "@/lib/invention/analyze";
+import { sessionIdBodySchema } from "@/lib/invention/schemas";
+import type { AnalyzeResult } from "@/lib/invention/types";
 
 export async function POST(request: Request) {
   const raw = await parseJsonBody(request);
@@ -10,5 +11,5 @@ export async function POST(request: Request) {
   }
   const result = await analyzeInvention(parsed.data.session_id);
   if (!result) return jsonError(404, "session not found");
-  return jsonOk(result);
+  return jsonOk<AnalyzeResult>(result);
 }
