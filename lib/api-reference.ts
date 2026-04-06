@@ -31,6 +31,7 @@ export const API_ENDPOINTS: readonly ApiEndpointSpec[] = [
     requestFields: ["session_id"],
     responseFields: [
       "completeness_score",
+      "confidence",
       "missing_sections",
       "risk_assessment",
       "recommendations",
@@ -52,6 +53,7 @@ export const API_ENDPOINTS: readonly ApiEndpointSpec[] = [
     requestFields: [],
     responseFields: [
       "completeness_score",
+      "confidence",
       "sections_complete",
       "sections_missing",
       "ready_to_file",
